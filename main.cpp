@@ -1,7 +1,7 @@
 #include <iostream>
-#include <dlfcn.h>
 #include <chrono>
 #include <thread>
+#include <dlfcn.h>
 
 #include <snake.hpp>
 #include <libgui.hpp>
@@ -9,65 +9,111 @@
 typedef ALibGUI* (*CreateGuiLibrary)(const LibGUISettings&);
 typedef void (*DestroyGuiLibrary)(ALibGUI*);
 
-typedef struct GameState {
-    int x;
-    int y;
-} GameState;
+constexpr SnakeSettings snakeSettings = {
+    .fieldWidth = 40,
+    .fieldHeight = 40,
+    .startX = 5,
+    .startY = 5,
+    .startLength = 10
+};
 
-int main() {
-    const auto libName = "./sdl_libgui.so";
-
-    void* lib = dlopen(libName, RTLD_LAZY);
-    if (!lib) {
+ALibGUI* loadGuiLibrary(const std::string& filename, const LibGUISettings& settings,
+                        void*& libHandle, CreateGuiLibrary& createGuiLibrary, DestroyGuiLibrary& destroyGuiLibrary)
+{
+    libHandle = dlopen(filename.c_str(), RTLD_LAZY);
+    if (!libHandle)
+    {
         std::cerr << "Failed to load library: " << dlerror() << std::endl;
-        return 1;
+        return nullptr;
     }
 
-    const auto createGuiLibrary = reinterpret_cast<CreateGuiLibrary>(dlsym(lib, "createGuiLibrary"));
-    const auto destroyGuiLibrary = reinterpret_cast<DestroyGuiLibrary>(dlsym(lib, "destroyGuiLibrary"));
-
-    const char* dlsymError = dlerror();
-    if (dlsymError) {
-        std::cerr << "Failed to load symbols: " << dlsymError << std::endl;
-        dlclose(lib);
-        return 1;
+    createGuiLibrary = reinterpret_cast<CreateGuiLibrary>(dlsym(libHandle, "createGuiLibrary"));
+    destroyGuiLibrary = reinterpret_cast<DestroyGuiLibrary>(dlsym(libHandle, "destroyGuiLibrary"));
+    if (const char* dlsymError = dlerror())
+    {
+        std::cerr << "Failed to load library " << filename << ": " << dlsymError << std::endl;
+        dlclose(libHandle);
+        return nullptr;
     }
 
-    constexpr SnakeSettings snakeSettings = {
-        .fieldWidth = 40,
-        .fieldHeight = 40,
-        .startX = 5,
-        .startY = 5,
-        .startLength = 10
+    return createGuiLibrary(settings);
+}
+
+int main()
+{
+    const std::vector<std::string> guiLibFilenames{
+        "./gui_libs/sdl/sdl_libgui.so",
+        "./gui_libs/sfml/sfml_libgui.so"
     };
+
+    auto currentGuiLibFilename = *guiLibFilenames.begin();
 
     const LibGUISettings guiSettings = {
         .window = {
-            .width = 800,
-            .height = 600,
+            .width = 1024,
+            .height = 768,
             .title = "Snake",
         },
         .fieldWidth = snakeSettings.fieldWidth,
         .fieldHeight = snakeSettings.fieldHeight
     };
 
-    Snake snake(snakeSettings);
-    ALibGUI* libGui = createGuiLibrary(guiSettings);
+    void* libHandle;
+    CreateGuiLibrary createGuiLibrary;
+    DestroyGuiLibrary destroyGuiLibrary;
+    auto libGui = loadGuiLibrary(currentGuiLibFilename, guiSettings, libHandle,
+                                     createGuiLibrary, destroyGuiLibrary);
+    if (!libGui)
+    {
+        std::cerr << "Failed to load library: " << currentGuiLibFilename << std::endl;
+        return EXIT_FAILURE;
+    }
 
+    Snake snake(snakeSettings);
     bool running = true;
-    while (running) {
-        const Input &input = libGui->handleInput();
-        std::cout << "Input: quit=" << input.quit << ", left=" << input.left << ", right=" << input.right << std::endl;
-        if (input.quit) {
+    while (running)
+    {
+        const Input& input = libGui->handleInput();
+
+        if (input.quit)
+        {
             running = false;
         }
+
+        if (const auto dp = std::find(input.digits, input.digits + 10, true); dp != input.digits + 10)
+        {
+            if (const size_t d = dp - input.digits - 1; guiLibFilenames.size() <= d)
+            {
+                std::cerr << "Invalid library index: " << d << std::endl;
+            }
+            else if (currentGuiLibFilename == guiLibFilenames[d])
+            {
+                std::cerr << "Already using library: " << currentGuiLibFilename << std::endl;
+            }
+            else
+            {
+                currentGuiLibFilename = guiLibFilenames[d];
+                std::cout << "Switching to library: " << currentGuiLibFilename << std::endl;
+
+                destroyGuiLibrary(libGui);
+                dlclose(libHandle);
+
+                libGui = loadGuiLibrary(currentGuiLibFilename, guiSettings, libHandle, createGuiLibrary, destroyGuiLibrary);
+                if (!libGui)
+                {
+                    std::cerr << "Failed to load library: " << currentGuiLibFilename << std::endl;
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+
         snake.move(input);
         libGui->render(snake.getSegments(), snake.getFood());
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     destroyGuiLibrary(libGui);
-    dlclose(lib);
+    dlclose(libHandle);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

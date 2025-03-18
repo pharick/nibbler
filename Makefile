@@ -1,41 +1,43 @@
-CXX									:= clang++
-CXXFLAGS							:= -Wall -Wextra -Werror -fPIC -std=c++11
-LDFLAGS								:= -ldl
+NAME		:= nibbler
 
-SDL_LIB_NAME						:= sdl_libgui.so
-MAIN_NAME							:= nibbler
+CXX			:= clang++
+CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP
+LDFLAGS		:= -ldl
 
-SDL_LIB_CXXFLAGS					:= $(shell sdl2-config --cflags)
-SDL_LIB_LDFLAGS						:= $(shell sdl2-config --libs)
-SDL_LIB_DIR							:= ./gui_libs/sdl
-SDL_LIB_SRC							:= sdl_libgui.cpp
-SDL_LIB_OBJ							:= $(SDL_LIB_SRC:.cpp=.o)
+SRC			:= main.cpp snake.cpp
+OBJ			:= $(SRC:.cpp=.o)
+DEPS		:= $(OBJ:.o=.d)
 
-MAIN_SRC							:= main.cpp snake.cpp
-MAIN_OBJ							:= $(MAIN_SRC:.cpp=.o)
+GUI_LIB_DIRS	:= ./gui_libs/sdl ./gui_libs/sfml
 
-all:								$(SDL_LIB_NAME) $(MAIN_NAME)
+all:		$(NAME)
 
-$(MAIN_NAME):						$(MAIN_OBJ)
+$(NAME):	$(OBJ)
+	for dir in $(GUI_LIB_DIRS); do \
+		$(MAKE) -C $$dir; \
+	done
+
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(SDL_LIB_NAME):					$(addprefix $(SDL_LIB_DIR)/, $(SDL_LIB_OBJ))
-	$(CXX) $(SDL_LIB_LDFLAGS) -shared -o $@ $^
-
-$(addprefix $(SDL_LIB_DIR)/, %.o):	$(SDL_LIB_DIR)/%.cpp
-	echo "lib"
-	$(CXX) $(CXXFLAGS) $(SDL_LIB_CXXFLAGS) -c $< -o $@ -I.
-
-%.o: 								%.cpp
-	echo "main"
+%.o:		%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@ -I.
 
 clean:
-	rm -f $(addprefix $(SDL_LIB_DIR)/, $(SDL_LIB_OBJ)) $(MAIN_OBJ)
+	for dir in $(GUI_LIB_DIRS); do \
+		$(MAKE) -C $$dir clean; \
+	done
 
-fclean:								clean
-	rm -f $(SDL_LIB_NAME) $(MAIN_NAME)
+	rm -f $(OBJ) $(OBJ:.o=.d)
 
-re:									clean all
+fclean:		clean
+	for dir in $(GUI_LIB_DIRS); do \
+		$(MAKE) -C $$dir fclean; \
+	done
+
+	rm -f $(NAME)
+
+re:			clean all
+
+-include $(DEPS)
 
 .PHONY: all clean fclean re

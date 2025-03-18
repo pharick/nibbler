@@ -12,6 +12,7 @@ typedef struct Input {
     bool right;
     bool up;
     bool down;
+    bool digits[10];
 } Input;
 
 #endif // COMMON_TYPES_HPP

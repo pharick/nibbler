@@ -23,7 +23,7 @@ typedef struct SnakeSettings {
 class SnakeException final : public std::exception {
 public:
     explicit SnakeException(std::string message) : message(std::move(message)) {}
-    const char* what() const noexcept override {
+    [[nodiscard]] const char* what() const noexcept override {
         return message.c_str();
     }
 
@@ -43,10 +43,16 @@ enum Direction {
 class Snake {
 public:
     explicit Snake(const SnakeSettings &settings);
+    ~Snake() = default;
+
+    Snake(const Snake& other) = default;
+    Snake& operator=(const Snake& other) = default;
+    Snake(Snake&& other) noexcept = default;
+    Snake& operator=(Snake&& other) noexcept = default;
 
     void move(const Input &input);
-    const std::vector<Segment> &getSegments() const;
-    const Segment &getFood() const;
+    [[nodiscard]] const std::vector<Segment> &getSegments() const;
+    [[nodiscard]] const Segment &getFood() const;
 
 private:
     SnakeSettings settings;

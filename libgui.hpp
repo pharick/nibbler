@@ -26,7 +26,7 @@ typedef struct LibGUISettings {
 class LibGuiException final : public std::exception {
 public:
     explicit LibGuiException(std::string message) : message(std::move(message)) {}
-    const char* what() const noexcept override {
+    [[nodiscard]] const char* what() const noexcept override {
         return message.c_str();
     }
 
@@ -38,13 +38,18 @@ private:
 
 class ALibGUI {
 public:
-    explicit ALibGUI(LibGUISettings settings) : settings(std::move(settings)) {}
+    explicit ALibGUI(LibGUISettings  settings) : settings(std::move(settings)) {}
     virtual ~ALibGUI() = default;
+
+    ALibGUI(const ALibGUI& other) = delete;
+    ALibGUI& operator=(const ALibGUI& other) = delete;
+    ALibGUI(ALibGUI&& other) noexcept = default;
+    ALibGUI& operator=(ALibGUI&& other) noexcept = default;
 
     virtual void render(const std::vector<Segment> &snakeSegments, const Segment &food) = 0;
     virtual const Input &handleInput() = 0;
 
-    const LibGUISettings &getSettings() const {
+    [[nodiscard]] const LibGUISettings &getSettings() const {
         return settings;
     }
 
