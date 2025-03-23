@@ -1,27 +1,30 @@
-#ifndef SDL_LIBGUI_HPP
-#define SDL_LIBGUI_HPP
+#ifndef OPENGL_LIBGUI_HPP
+#define OPENGL_LIBGUI_HPP
 
 #include "libgui.hpp"
 
-#include <SDL.h>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
-class SDL_LibGUI final : public ALibGUI
+class OpenGL_LibGUI final : public ALibGUI
 {
 public:
-    explicit SDL_LibGUI(const LibGUISettings& settings);
-    ~SDL_LibGUI() override;
+    explicit OpenGL_LibGUI(const LibGUISettings& settings);
+    ~OpenGL_LibGUI() override;
 
-    SDL_LibGUI(const SDL_LibGUI& other) = delete;
-    SDL_LibGUI& operator=(const SDL_LibGUI& other) = delete;
-    SDL_LibGUI(SDL_LibGUI&& other) noexcept;
-    SDL_LibGUI& operator=(SDL_LibGUI&& other) noexcept;
+    OpenGL_LibGUI(const OpenGL_LibGUI& other) = delete;
+    OpenGL_LibGUI& operator=(const OpenGL_LibGUI& other) = delete;
+    OpenGL_LibGUI(OpenGL_LibGUI&& other) noexcept;
+    OpenGL_LibGUI& operator=(OpenGL_LibGUI&& other) noexcept;
 
     void render(const std::vector<Segment>& snakeSegments, const Segment& food) override;
-    const Input& handleInput() override;
+    Input handleInput() override;
 
 private:
-    SDL_Window* window;
-    SDL_Renderer* renderer;
+    GLFWwindow* window;
+    Input input;
+
+    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 };
 
-#endif // SDL_LIBGUI_HPP
+#endif // OPENGL_LIBGUI_HPP

@@ -96,10 +96,9 @@ void SDL_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segment
     SDL_RenderPresent(renderer);
 }
 
-const Input& SDL_LibGUI::handleInput()
+Input SDL_LibGUI::handleInput()
 {
-    static Input input;
-    input = {};
+    Input input{};
 
     SDL_Event event;
     while (SDL_PollEvent(&event))

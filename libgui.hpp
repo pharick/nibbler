@@ -47,7 +47,7 @@ public:
     ALibGUI& operator=(ALibGUI&& other) noexcept = default;
 
     virtual void render(const std::vector<Segment> &snakeSegments, const Segment &food) = 0;
-    virtual const Input &handleInput() = 0;
+    virtual Input handleInput() = 0;
 
     [[nodiscard]] const LibGUISettings &getSettings() const {
         return settings;

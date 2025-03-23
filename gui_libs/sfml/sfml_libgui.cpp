@@ -46,10 +46,9 @@ void SFML_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segmen
     window.display();
 }
 
-const Input& SFML_LibGUI::handleInput()
+Input SFML_LibGUI::handleInput()
 {
-    static Input input;
-    input = {};
+    Input input{};
 
     while (const std::optional event = window.pollEvent())
     {

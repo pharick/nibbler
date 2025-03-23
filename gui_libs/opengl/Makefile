@@ -1,10 +1,10 @@
-NAME		:= sdl_libgui.so
+NAME		:= opengl_libgui.so
 
 CXX			:= clang++
-CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP -I../../ $(shell sdl2-config --cflags)
-LDFLAGS		:= $(shell sdl2-config --libs)
+CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP -I/opt/homebrew/include -I../../ -I.
+LDFLAGS		:= -L/opt/homebrew/lib -lglfw -lglew
 
-SRC			:= sdl_libgui.cpp
+SRC			:= opengl_libgui.cpp
 OBJ			:= $(SRC:.cpp=.o)
 DEPS		:= $(OBJ:.o=.d)
 
@@ -14,7 +14,7 @@ $(NAME):	$(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS) -shared
 
 %.o:		%.cpp
-	$(CXX) -c $< -o $@ $(CXXFLAGS) -I. $(CXXFLAGS)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJ) $(OBJ:.o=.d)

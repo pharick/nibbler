@@ -1,7 +1,7 @@
 NAME		:= sdl_libgui.so
 
 CXX			:= clang++
-CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP -I../../ $(shell sdl2-config --cflags)
+CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP $(shell sdl2-config --cflags) -I../../ -I.
 LDFLAGS		:= $(shell sdl2-config --libs)
 
 SRC			:= sdl_libgui.cpp
@@ -14,7 +14,7 @@ $(NAME):	$(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS) -shared
 
 %.o:		%.cpp
-	$(CXX) -c $< -o $@ $(CXXFLAGS) -I. $(CXXFLAGS)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJ) $(OBJ:.o=.d)

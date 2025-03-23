@@ -1,7 +1,7 @@
 NAME		:= sfml_libgui.so
 
 CXX			:= clang++
-CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP -I/opt/homebrew/include -I../../
+CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP -I/opt/homebrew/include -I../../ -I.
 LDFLAGS		:= -L/opt/homebrew/lib -lsfml-graphics -lsfml-window -lsfml-system
 
 DIR			:= ./gui_libs/sfml
@@ -15,7 +15,7 @@ $(NAME):	$(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS) -shared
 
 %.o:		%.cpp
-	$(CXX) -c $< -o $@ $(CXXFLAGS) -I. $(CXXFLAGS)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJ) $(OBJ:.o=.d)

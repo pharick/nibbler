@@ -17,7 +17,7 @@ public:
     SDL_LibGUI& operator=(SDL_LibGUI&& other) noexcept;
 
     void render(const std::vector<Segment>& snakeSegments, const Segment& food) override;
-    const Input& handleInput() override;
+    Input handleInput() override;
 
 private:
     SDL_Window* window;

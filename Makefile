@@ -1,7 +1,7 @@
 NAME		:= nibbler
 
 CXX			:= clang++
-CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP
+CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP -I.
 LDFLAGS		:= -ldl
 
 SRC			:= main.cpp snake.cpp
@@ -20,7 +20,7 @@ $(NAME):	$(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 %.o:		%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@ -I.
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	for dir in $(GUI_LIB_DIRS); do \

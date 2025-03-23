@@ -17,6 +17,23 @@ constexpr SnakeSettings snakeSettings = {
     .startLength = 10
 };
 
+const LibGUISettings guiSettings = {
+    .window = {
+        .width = 1024,
+        .height = 768,
+        .title = "Snake",
+    },
+    .fieldWidth = snakeSettings.fieldWidth,
+    .fieldHeight = snakeSettings.fieldHeight
+};
+
+const std::vector guiLibFilenames{
+    "./gui_libs/opengl/opengl_libgui.so",
+    "./gui_libs/sdl/sdl_libgui.so",
+    "./gui_libs/sfml/sfml_libgui.so",
+};
+auto currentGuiLibFilename = *guiLibFilenames.begin();
+
 ALibGUI* loadGuiLibrary(const std::string& filename, const LibGUISettings& settings,
                         void*& libHandle, CreateGuiLibrary& createGuiLibrary, DestroyGuiLibrary& destroyGuiLibrary)
 {
@@ -39,37 +56,49 @@ ALibGUI* loadGuiLibrary(const std::string& filename, const LibGUISettings& setti
     return createGuiLibrary(settings);
 }
 
+bool switchLibrary(const bool* dp, const Input& input, ALibGUI*& libGui, void*& libHandle,
+                   CreateGuiLibrary& createGuiLibrary, DestroyGuiLibrary& destroyGuiLibrary)
+{
+    if (const size_t d = dp - input.digits - 1; d >= guiLibFilenames.size())
+    {
+        std::cerr << "Invalid library index: " << d << std::endl;
+    }
+    else if (currentGuiLibFilename == guiLibFilenames[d])
+    {
+        std::cerr << "Already using library: " << currentGuiLibFilename << std::endl;
+    }
+    else
+    {
+        currentGuiLibFilename = guiLibFilenames[d];
+        std::cout << "Switching to library: " << currentGuiLibFilename << std::endl;
+
+        destroyGuiLibrary(libGui);
+        dlclose(libHandle);
+
+        libGui = loadGuiLibrary(currentGuiLibFilename, guiSettings, libHandle, createGuiLibrary, destroyGuiLibrary);
+        if (!libGui)
+        {
+            std::cerr << "Failed to load library: " << currentGuiLibFilename << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
 int main()
 {
-    const std::vector<std::string> guiLibFilenames{
-        "./gui_libs/sdl/sdl_libgui.so",
-        "./gui_libs/sfml/sfml_libgui.so"
-    };
-
-    auto currentGuiLibFilename = *guiLibFilenames.begin();
-
-    const LibGUISettings guiSettings = {
-        .window = {
-            .width = 1024,
-            .height = 768,
-            .title = "Snake",
-        },
-        .fieldWidth = snakeSettings.fieldWidth,
-        .fieldHeight = snakeSettings.fieldHeight
-    };
-
     void* libHandle;
     CreateGuiLibrary createGuiLibrary;
     DestroyGuiLibrary destroyGuiLibrary;
     auto libGui = loadGuiLibrary(currentGuiLibFilename, guiSettings, libHandle,
-                                     createGuiLibrary, destroyGuiLibrary);
+                                 createGuiLibrary, destroyGuiLibrary);
     if (!libGui)
     {
         std::cerr << "Failed to load library: " << currentGuiLibFilename << std::endl;
         return EXIT_FAILURE;
     }
 
-    Snake snake(snakeSettings);
+    const Snake snake(snakeSettings);
     bool running = true;
     while (running)
     {
@@ -82,32 +111,13 @@ int main()
 
         if (const auto dp = std::find(input.digits, input.digits + 10, true); dp != input.digits + 10)
         {
-            if (const size_t d = dp - input.digits - 1; guiLibFilenames.size() <= d)
+            if (!switchLibrary(dp, input, libGui, libHandle, createGuiLibrary, destroyGuiLibrary))
             {
-                std::cerr << "Invalid library index: " << d << std::endl;
-            }
-            else if (currentGuiLibFilename == guiLibFilenames[d])
-            {
-                std::cerr << "Already using library: " << currentGuiLibFilename << std::endl;
-            }
-            else
-            {
-                currentGuiLibFilename = guiLibFilenames[d];
-                std::cout << "Switching to library: " << currentGuiLibFilename << std::endl;
-
-                destroyGuiLibrary(libGui);
-                dlclose(libHandle);
-
-                libGui = loadGuiLibrary(currentGuiLibFilename, guiSettings, libHandle, createGuiLibrary, destroyGuiLibrary);
-                if (!libGui)
-                {
-                    std::cerr << "Failed to load library: " << currentGuiLibFilename << std::endl;
-                    return EXIT_FAILURE;
-                }
+                return EXIT_FAILURE;
             }
         }
 
-        snake.move(input);
+        // snake.move(input);
         libGui->render(snake.getSegments(), snake.getFood());
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

@@ -17,7 +17,7 @@ public:
     SFML_LibGUI& operator=(SFML_LibGUI&& other) = delete;
 
     void render(const std::vector<Segment>& snakeSegments, const Segment& food) override;
-    const Input& handleInput() override;
+    Input handleInput() override;
 
 private:
     sf::RenderWindow window;
