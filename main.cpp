@@ -6,31 +6,19 @@
 #include <snake.hpp>
 #include <libgui.hpp>
 
+#define DEFAULT_WINDOW_WIDTH 1024
+#define DEFAULT_WINDOW_HEIGHT 768
+#define START_LENGTH 4
+
 typedef ALibGUI* (*CreateGuiLibrary)(const LibGUISettings&);
 typedef void (*DestroyGuiLibrary)(ALibGUI*);
 
-constexpr SnakeSettings snakeSettings = {
-    .fieldWidth = 40,
-    .fieldHeight = 40,
-    .startX = 5,
-    .startY = 5,
-    .startLength = 10
-};
-
-const LibGUISettings guiSettings = {
-    .window = {
-        .width = 1024,
-        .height = 768,
-        .title = "Snake",
-    },
-    .fieldWidth = snakeSettings.fieldWidth,
-    .fieldHeight = snakeSettings.fieldHeight
-};
+constexpr auto usageArgs = "<fieldWidth> <fieldHeight> [<windowWidth> <windowHeight>]";
 
 const std::vector guiLibFilenames{
-    "./gui_libs/opengl/opengl_libgui.so",
     "./gui_libs/sdl/sdl_libgui.so",
     "./gui_libs/sfml/sfml_libgui.so",
+    "./gui_libs/opengl/opengl_libgui.so",
 };
 auto currentGuiLibFilename = *guiLibFilenames.begin();
 
@@ -56,8 +44,8 @@ ALibGUI* loadGuiLibrary(const std::string& filename, const LibGUISettings& setti
     return createGuiLibrary(settings);
 }
 
-bool switchLibrary(const bool* dp, const Input& input, ALibGUI*& libGui, void*& libHandle,
-                   CreateGuiLibrary& createGuiLibrary, DestroyGuiLibrary& destroyGuiLibrary)
+bool switchLibrary(const bool* dp, const Input& input, const LibGUISettings& guiSettings, ALibGUI*& libGui,
+                   void*& libHandle, CreateGuiLibrary& createGuiLibrary, DestroyGuiLibrary& destroyGuiLibrary)
 {
     if (const size_t d = dp - input.digits - 1; d >= guiLibFilenames.size())
     {
@@ -85,8 +73,44 @@ bool switchLibrary(const bool* dp, const Input& input, ALibGUI*& libGui, void*& 
     return true;
 }
 
-int main()
+int main(const int argc, char** argv)
 {
+    if (argc < 3 || argc == 4)
+    {
+        std::cerr << "Usage: " << argv[0] << " " << usageArgs << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    const int fieldWidth = std::stoi(argv[1]);
+    const int fieldHeight = std::stoi(argv[2]);
+
+    int windowWidth = DEFAULT_WINDOW_WIDTH;
+    int windowHeight = DEFAULT_WINDOW_HEIGHT;
+    if (argc == 5)
+    {
+        windowWidth = std::stoi(argv[3]);
+        windowHeight = std::stoi(argv[4]);
+    }
+
+    const SnakeSettings snakeSettings = {
+        .fieldWidth = fieldWidth,
+        .fieldHeight = fieldHeight,
+        .startX = fieldWidth / 2 + START_LENGTH / 2 - 1,
+        .startY = fieldHeight / 2,
+        .startLength = START_LENGTH,
+    };
+
+    const LibGUISettings guiSettings = {
+        .window = {
+            .width = windowWidth,
+            .height = windowHeight,
+            .title = "Snake",
+        },
+        .fieldWidth = snakeSettings.fieldWidth,
+        .fieldHeight = snakeSettings.fieldHeight
+    };
+
+
     void* libHandle;
     CreateGuiLibrary createGuiLibrary;
     DestroyGuiLibrary destroyGuiLibrary;
@@ -98,7 +122,7 @@ int main()
         return EXIT_FAILURE;
     }
 
-    Snake *snake = nullptr;
+    Snake* snake = nullptr;
     try
     {
         snake = new Snake(snakeSettings);
@@ -121,7 +145,7 @@ int main()
 
         if (const auto dp = std::find(input.digits, input.digits + 10, true); dp != input.digits + 10)
         {
-            if (!switchLibrary(dp, input, libGui, libHandle, createGuiLibrary, destroyGuiLibrary))
+            if (!switchLibrary(dp, input, guiSettings, libGui, libHandle, createGuiLibrary, destroyGuiLibrary))
             {
                 return EXIT_FAILURE;
             }
