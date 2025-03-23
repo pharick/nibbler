@@ -98,7 +98,7 @@ int main()
         return EXIT_FAILURE;
     }
 
-    const Snake snake(snakeSettings);
+    Snake snake(snakeSettings);
     bool running = true;
     while (running)
     {
@@ -117,7 +117,7 @@ int main()
             }
         }
 
-        // snake.move(input);
+        snake.move(input);
         libGui->render(snake.getSegments(), snake.getFood());
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

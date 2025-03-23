@@ -1,8 +1,76 @@
 #include "opengl_libgui.hpp"
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 
-OpenGL_LibGUI::OpenGL_LibGUI(const LibGUISettings& settings) : ALibGUI{settings}, window{nullptr}, input{}
+#include <glm/mat4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#define FOV 45.0f
+#define Z_NEAR 1.0f
+#define Z_FAR 100.0f
+#define Z_DISTANCE 5.0f
+
+constexpr float cubeVertexPositions[]{
+    // Front face (z = +1) - clockwise from outside
+    -1.0f, -1.0f, 1.0f,  // bottom-left
+    1.0f, -1.0f, 1.0f,   // bottom-right
+    1.0f, 1.0f, 1.0f,    // top-right
+
+    -1.0f, -1.0f, 1.0f,  // bottom-left
+    1.0f, 1.0f, 1.0f,    // top-right
+    -1.0f, 1.0f, 1.0f,   // top-left
+
+    // Back face (z = -1) - clockwise from outside
+    1.0f, -1.0f, -1.0f,  // bottom-right
+    -1.0f, -1.0f, -1.0f, // bottom-left
+    -1.0f, 1.0f, -1.0f,  // top-left
+
+    1.0f, -1.0f, -1.0f,  // bottom-right
+    -1.0f, 1.0f, -1.0f,  // top-left
+    1.0f, 1.0f, -1.0f,   // top-right
+
+    // Left face (x = -1) - clockwise from outside
+    -1.0f, -1.0f, -1.0f, // bottom-back
+    -1.0f, -1.0f, 1.0f,  // bottom-front
+    -1.0f, 1.0f, 1.0f,   // top-front
+
+    -1.0f, -1.0f, -1.0f, // bottom-back
+    -1.0f, 1.0f, 1.0f,   // top-front
+    -1.0f, 1.0f, -1.0f,  // top-back
+
+    // Right face (x = +1) - clockwise from outside
+    1.0f, -1.0f, 1.0f,   // bottom-front
+    1.0f, -1.0f, -1.0f,  // bottom-back
+    1.0f, 1.0f, -1.0f,   // top-back
+
+    1.0f, -1.0f, 1.0f,   // bottom-front
+    1.0f, 1.0f, -1.0f,   // top-back
+    1.0f, 1.0f, 1.0f,    // top-front
+
+    // Top face (y = +1) - clockwise from outside
+    -1.0f, 1.0f, 1.0f,   // front-left
+    1.0f, 1.0f, 1.0f,    // front-right
+    1.0f, 1.0f, -1.0f,   // back-right
+
+    -1.0f, 1.0f, 1.0f,   // front-left
+    1.0f, 1.0f, -1.0f,   // back-right
+    -1.0f, 1.0f, -1.0f,  // back-left
+
+    // Bottom face (y = -1) - clockwise from outside
+    -1.0f, -1.0f, -1.0f, // back-left
+    1.0f, -1.0f, -1.0f,  // back-right
+    1.0f, -1.0f, 1.0f,   // front-right
+
+    -1.0f, -1.0f, -1.0f, // back-left
+    1.0f, -1.0f, 1.0f,   // front-right
+    -1.0f, -1.0f, 1.0f   // front-left
+};
+
+OpenGL_LibGUI::OpenGL_LibGUI(const LibGUISettings& settings) : ALibGUI{settings}
 {
     if (!glfwInit())
     {
@@ -35,6 +103,7 @@ OpenGL_LibGUI::OpenGL_LibGUI(const LibGUISettings& settings) : ALibGUI{settings}
     }
 
     glfwSetKeyCallback(window, keyCallback);
+    prepareState();
 }
 
 OpenGL_LibGUI::~OpenGL_LibGUI()
@@ -46,7 +115,9 @@ OpenGL_LibGUI::~OpenGL_LibGUI()
 OpenGL_LibGUI::OpenGL_LibGUI(OpenGL_LibGUI&& other) noexcept :
     ALibGUI(std::move(other)),
     window(other.window),
-    input()
+    program(other.program),
+    projectionMatrixLocation(other.projectionMatrixLocation),
+    modelMatrixLocation(other.modelMatrixLocation)
 {
     other.window = nullptr;
 }
@@ -65,18 +136,176 @@ OpenGL_LibGUI& OpenGL_LibGUI::operator=(OpenGL_LibGUI&& other) noexcept
     return *this;
 }
 
+GLuint OpenGL_LibGUI::loadShader(const GLenum shaderType, const std::string& filename)
+{
+    std::ifstream shaderFile(filename);
+    if (!shaderFile.is_open())
+    {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return 0;
+    }
+
+    std::stringstream shaderData;
+    shaderData << shaderFile.rdbuf();
+    shaderFile.close();
+    auto shaderStr = shaderData.str();
+    auto shaderStrData = shaderStr.c_str();
+
+    GLuint shader = glCreateShader(shaderType);
+    glShaderSource(shader, 1, &shaderStrData, nullptr);
+    glCompileShader(shader);
+
+    GLint status;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE)
+    {
+        GLint infoLogLength;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
+        auto infoLog = new GLchar[infoLogLength + 1];
+        glGetShaderInfoLog(shader, infoLogLength, nullptr, infoLog);
+        std::cerr << "Compile failure in " << filename << ": " << infoLog << std::endl;
+        delete[] infoLog;
+        glDeleteShader(shader);
+        return 0;
+    }
+
+    return shader;
+}
+
+GLuint OpenGL_LibGUI::createProgram(const std::vector<GLuint>& shaders)
+{
+    const auto program = glCreateProgram();
+    for (const auto shader : shaders)
+    {
+        glAttachShader(program, shader);
+    }
+
+    glLinkProgram(program);
+
+    GLint status;
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    if (status == GL_FALSE)
+    {
+        GLint infoLogLength;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
+        const auto infoLog = new GLchar[infoLogLength + 1];
+        glGetProgramInfoLog(program, infoLogLength, nullptr, infoLog);
+        std::cerr << "Linker failure: " << infoLog << std::endl;
+        delete[] infoLog;
+        glDeleteProgram(program);
+        return 0;
+    }
+
+    for (const auto shader : shaders)
+    {
+        glDetachShader(program, shader);
+    }
+
+    return program;
+}
+
+void OpenGL_LibGUI::prepareState()
+{
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertexPositions), cubeVertexPositions, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    const auto vertexShader = loadShader(GL_VERTEX_SHADER, "./gui_libs/opengl/shaders/shader.vert");
+    if (!vertexShader)
+    {
+        throw LibGuiException("Failed to load vertex shader");
+    }
+
+    const auto fragmentShader = loadShader(GL_FRAGMENT_SHADER, "./gui_libs/opengl/shaders/shader.frag");
+    if (!fragmentShader)
+    {
+        glDeleteShader(vertexShader);
+        throw LibGuiException("Failed to load fragment shader");
+    }
+
+    const std::vector shaders = {vertexShader, fragmentShader};
+    program = createProgram(shaders);
+    if (!program)
+    {
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        throw LibGuiException("Failed to create shader program");
+    }
+
+    projectionMatrixLocation = glGetUniformLocation(program, "projectionMatrix");
+    modelMatrixLocation = glGetUniformLocation(program, "modelMatrix");
+
+    auto projectionMatrix = glm::perspective(glm::radians(FOV),
+                                             static_cast<float>(getSettings().window.width) /
+                                             static_cast<float>(getSettings().window.height),
+                                             Z_NEAR, Z_FAR);
+
+    glUseProgram(program);
+    glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, value_ptr(projectionMatrix));
+    glUseProgram(0);
+
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CW);
+}
+
 void OpenGL_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segment& food)
 {
-    (void)snakeSegments;
-    (void)food;
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glUseProgram(program);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    for (const auto& segment : snakeSegments)
+    {
+        renderSegment(segment);
+    }
+    renderSegment(food);
+
+    glDisableVertexAttribArray(0);
+    glUseProgram(0);
+
+    glfwSwapBuffers(window);
 }
+
+void OpenGL_LibGUI::renderSegment(const Segment& segment) const
+{
+    constexpr float fov = glm::radians(FOV);
+    const float aspect =
+        static_cast<float>(getSettings().window.width) / static_cast<float>(getSettings().window.height);
+    const float visibleHeight = 2.0f * tan(fov / 2.0f) * Z_DISTANCE;
+    const float visibleWidth = visibleHeight * aspect;
+    const float cellWidth = visibleWidth / static_cast<float>(getSettings().fieldWidth);
+    const float cellHeight = visibleHeight / static_cast<float>(getSettings().fieldHeight);
+
+    const float ndcX = -visibleWidth / 2.0f + cellWidth * (static_cast<float>(segment.x) + 0.5f);
+    const float ndcY = visibleHeight / 2.0f - cellHeight * (static_cast<float>(segment.y) + 0.5f);
+
+    auto modelMatrix = glm::mat4(1.0f);
+    modelMatrix = translate(modelMatrix, glm::vec3(ndcX, ndcY, -Z_DISTANCE));
+    modelMatrix = scale(modelMatrix, glm::vec3(cellWidth * 0.5f, cellHeight * 0.5f, 0.1f));
+
+    glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, value_ptr(modelMatrix));
+
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
 
 Input OpenGL_LibGUI::handleInput()
 {
     glfwPollEvents();
     if (glfwWindowShouldClose(window))
     {
-        std::cout << "Quit" << std::endl;
         input.quit = true;
     }
     const auto currentInput = input;

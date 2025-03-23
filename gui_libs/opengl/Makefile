@@ -2,7 +2,7 @@ NAME		:= opengl_libgui.so
 
 CXX			:= clang++
 CXXFLAGS	:= -Wall -Wextra -Werror -fPIC -std=c++20 -MMD -MP -I/opt/homebrew/include -I../../ -I.
-LDFLAGS		:= -L/opt/homebrew/lib -lglfw -lglew
+LDFLAGS		:= -L/opt/homebrew/lib -lglfw -lglew -framework OpenGL
 
 SRC			:= opengl_libgui.cpp
 OBJ			:= $(SRC:.cpp=.o)

@@ -21,10 +21,18 @@ public:
     Input handleInput() override;
 
 private:
-    GLFWwindow* window;
-    Input input;
+    GLFWwindow* window{nullptr};
+    Input input{};
+    GLuint vbo{};
+    GLuint program{};
+    GLint projectionMatrixLocation{};
+    GLint modelMatrixLocation{};
 
+    void prepareState();
+    void renderSegment(const Segment& segment) const;
     static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static GLuint loadShader(GLenum shaderType, const std::string& filename);
+    static GLuint createProgram(const std::vector<GLuint>& shaders);
 };
 
 #endif // OPENGL_LIBGUI_HPP
