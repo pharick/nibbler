@@ -50,6 +50,7 @@ public:
     Snake(Snake&& other) noexcept = default;
     Snake& operator=(Snake&& other) noexcept = default;
 
+    void reset();
     void move(const Input &input);
     [[nodiscard]] const std::vector<Segment> &getSegments() const;
     [[nodiscard]] const Segment &getFood() const;
@@ -58,7 +59,7 @@ private:
     SnakeSettings settings;
     std::vector<Segment> segments;
     Segment food{};
-    Direction direction;
+    Direction direction{DIRECTION_RIGHT};
 
     std::mt19937 rng;
     std::uniform_int_distribution<> distWidth;

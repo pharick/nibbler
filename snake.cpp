@@ -2,7 +2,6 @@
 
 Snake::Snake(const SnakeSettings &settings) :
     settings(settings),
-    direction(DIRECTION_RIGHT),
     rng(std::random_device{}()),
     distWidth(0, settings.fieldWidth - 1),
     distHeight(0, settings.fieldHeight - 1)
@@ -10,21 +9,24 @@ Snake::Snake(const SnakeSettings &settings) :
     if (settings.fieldWidth < 10 || settings.fieldHeight < 10) {
         throw SnakeException("Field size should be at least 10x10");
     }
-
     if (settings.startX < 0 || settings.startX >= settings.fieldWidth
         || settings.startY < 0 || settings.startY >= settings.fieldHeight) {
         throw SnakeException("Invalid start position");
     }
-
     if (settings.startLength > settings.fieldWidth / 2) {
         throw SnakeException("Start length cannot be greater than field width");
     }
-
     if (settings.startLength < 1) {
         throw SnakeException("Start length must be at least 1");
     }
 
+    reset();
+}
+
+void Snake::reset()
+{
     const Segment head = {settings.startX, settings.startY};
+    segments.clear();
     segments.push_back(head);
 
     for (int i = 1; i < settings.startLength; i++) {
@@ -32,8 +34,10 @@ Snake::Snake(const SnakeSettings &settings) :
         segments.push_back(segment);
     }
 
+    direction = DIRECTION_RIGHT;
     generateFood();
 }
+
 
 void Snake::move(const Input &input) {
     if (input.left && direction != DIRECTION_RIGHT) {
@@ -91,8 +95,8 @@ void Snake::generateFood() {
         food.x = distWidth(rng);
         food.y = distHeight(rng);
         foodOnSnake = false;
-        for (const auto &segment : segments) {
-            if (segment.x == food.x && segment.y == food.y) {
+        for (const auto & [x, y] : segments) {
+            if (x == food.x && y == food.y) {
                 foodOnSnake = true;
                 break;
             }

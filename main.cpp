@@ -98,7 +98,17 @@ int main()
         return EXIT_FAILURE;
     }
 
-    Snake snake(snakeSettings);
+    Snake *snake = nullptr;
+    try
+    {
+        snake = new Snake(snakeSettings);
+    }
+    catch (const SnakeException& e)
+    {
+        std::cerr << "Failed to create snake: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+
     bool running = true;
     while (running)
     {
@@ -117,13 +127,23 @@ int main()
             }
         }
 
-        snake.move(input);
-        libGui->render(snake.getSegments(), snake.getFood());
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        try
+        {
+            snake->move(input);
+        }
+        catch (const SnakeException& e)
+        {
+            std::cerr << "Game over: " << e.what() << std::endl;
+            snake->reset();
+        }
+
+        libGui->render(snake->getSegments(), snake->getFood());
+        std::this_thread::sleep_for(std::chrono::milliseconds(80));
     }
 
     destroyGuiLibrary(libGui);
     dlclose(libHandle);
+    delete snake;
 
     return EXIT_SUCCESS;
 }
