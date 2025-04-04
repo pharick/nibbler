@@ -8,7 +8,7 @@ SRC			:= main.cpp snake.cpp
 OBJ			:= $(SRC:.cpp=.o)
 DEPS		:= $(OBJ:.o=.d)
 
-GUI_LIB_DIRS	:= ./gui_libs/sdl ./gui_libs/sfml
+GUI_LIB_DIRS	:= ./gui_libs/sdl ./gui_libs/sfml ./gui_libs/opengl
 
 all:		$(NAME)
 
