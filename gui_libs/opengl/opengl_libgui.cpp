@@ -239,6 +239,7 @@ void OpenGL_LibGUI::prepareState()
 
     projectionMatrixLocation = glGetUniformLocation(program, "projectionMatrix");
     modelMatrixLocation = glGetUniformLocation(program, "modelMatrix");
+    segmentNumberLocation = glGetUniformLocation(program, "segmentNumber");
 
     auto projectionMatrix = glm::perspective(glm::radians(FOV),
                                              static_cast<float>(getSettings().window.width) /
@@ -266,11 +267,12 @@ void OpenGL_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segm
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    int n = 1;
     for (const auto& segment : snakeSegments)
     {
-        renderSegment(segment);
+        renderSegment(segment, n++);
     }
-    renderSegment(food);
+    renderSegment(food, 0);
 
     glDisableVertexAttribArray(0);
     glUseProgram(0);
@@ -278,7 +280,7 @@ void OpenGL_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segm
     glfwSwapBuffers(window);
 }
 
-void OpenGL_LibGUI::renderSegment(const Segment& segment) const
+void OpenGL_LibGUI::renderSegment(const Segment& segment, const int n) const
 {
     constexpr float fov = glm::radians(FOV);
     const float aspect =
@@ -293,8 +295,10 @@ void OpenGL_LibGUI::renderSegment(const Segment& segment) const
 
     auto modelMatrix = glm::mat4(1.0f);
     modelMatrix = translate(modelMatrix, glm::vec3(ndcX, ndcY, -Z_DISTANCE));
-    modelMatrix = scale(modelMatrix, glm::vec3(cellWidth * 0.5f, cellHeight * 0.5f, 0.1f));
+    modelMatrix = scale(modelMatrix, glm::vec3(cellWidth * 0.5f, cellHeight * 0.5f, cellWidth * 0.5f));
 
+    std::cout << "segment: " << n << " x: " << segment.x << " y: " << segment.y << std::endl;
+    glUniform1iv(segmentNumberLocation, 1, &n);
     glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, value_ptr(modelMatrix));
 
     glDrawArrays(GL_TRIANGLES, 0, 36);
