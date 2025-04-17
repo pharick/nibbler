@@ -297,13 +297,11 @@ void OpenGL_LibGUI::renderSegment(const Segment& segment, const int n) const
     modelMatrix = translate(modelMatrix, glm::vec3(ndcX, ndcY, -Z_DISTANCE));
     modelMatrix = scale(modelMatrix, glm::vec3(cellWidth * 0.5f, cellHeight * 0.5f, cellWidth * 0.5f));
 
-    std::cout << "segment: " << n << " x: " << segment.x << " y: " << segment.y << std::endl;
     glUniform1iv(segmentNumberLocation, 1, &n);
     glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, value_ptr(modelMatrix));
 
     glDrawArrays(GL_TRIANGLES, 0, 36);
 }
-
 
 Input OpenGL_LibGUI::handleInput()
 {
