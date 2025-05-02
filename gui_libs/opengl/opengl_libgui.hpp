@@ -29,9 +29,13 @@ private:
     GLint modelMatrixLocation{};
     GLint segmentNumberLocation{};
 
+    int windowWidth;
+    int windowHeight;
+
     void prepareState();
     void renderSegment(const Segment& segment, int n) const;
     static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
     static GLuint loadShader(GLenum shaderType, const std::string& filename);
     static GLuint createProgram(const std::vector<GLuint>& shaders);
 };

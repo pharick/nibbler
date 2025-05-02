@@ -1,6 +1,8 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <algorithm>
+#include <string>
 #include <dlfcn.h>
 
 #include <snake.hpp>
@@ -13,7 +15,7 @@
 typedef ALibGUI* (*CreateGuiLibrary)(const LibGUISettings&);
 typedef void (*DestroyGuiLibrary)(ALibGUI*);
 
-constexpr auto usageArgs = "<fieldWidth> <fieldHeight> [<windowWidth> <windowHeight>]";
+constexpr auto usageArgs = "<fieldWidth> <fieldHeight>";
 
 const std::vector guiLibFilenames{
     "./gui_libs/sdl/sdl_libgui.so",
@@ -73,6 +75,30 @@ bool switchLibrary(const bool* dp, const Input& input, const LibGUISettings& gui
     return true;
 }
 
+int validateSizeArg(const std::string& arg)
+{
+    if (arg.empty())
+        return -1;
+
+    for (char c : arg)
+    {
+        if (!std::isdigit(c))
+            return -1;
+    }
+
+    try
+    {
+        long long v = std::stoll(arg);
+        if (v <= 0 || v > std::numeric_limits<int>::max())
+            return -1;
+        return static_cast<int>(v);
+    }
+    catch (const std::exception& e)
+    {
+        return -1;
+    }
+}
+
 int main(const int argc, char** argv)
 {
     if (argc < 3 || argc == 4)
@@ -81,15 +107,13 @@ int main(const int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    const int fieldWidth = std::stoi(argv[1]);
-    const int fieldHeight = std::stoi(argv[2]);
+    const int fieldWidth = validateSizeArg(argv[1]);
+    const int fieldHeight = validateSizeArg(argv[2]);
 
-    int windowWidth = DEFAULT_WINDOW_WIDTH;
-    int windowHeight = DEFAULT_WINDOW_HEIGHT;
-    if (argc == 5)
+    if (fieldWidth < 0 || fieldHeight < 0)
     {
-        windowWidth = std::stoi(argv[3]);
-        windowHeight = std::stoi(argv[4]);
+        std::cerr << "Field width and field height must be positive integers" << std::endl;
+        return EXIT_FAILURE;
     }
 
     const SnakeSettings snakeSettings = {
@@ -102,9 +126,8 @@ int main(const int argc, char** argv)
 
     const LibGUISettings guiSettings = {
         .window = {
-            .width = windowWidth,
-            .height = windowHeight,
-            .title = "Snake",
+            .initWidth = DEFAULT_WINDOW_WIDTH,
+            .initHeight = DEFAULT_WINDOW_HEIGHT,
         },
         .fieldWidth = snakeSettings.fieldWidth,
         .fieldHeight = snakeSettings.fieldHeight

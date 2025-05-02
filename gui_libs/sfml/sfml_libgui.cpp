@@ -1,13 +1,20 @@
 #include "sfml_libgui.hpp"
 
-SFML_LibGUI::SFML_LibGUI(const LibGUISettings& settings) : ALibGUI(settings)
+SFML_LibGUI::SFML_LibGUI(const LibGUISettings& settings)
+    : ALibGUI(settings), windowWidth(settings.window.initWidth), windowHeight(settings.window.initHeight)
 {
-    window.create(sf::VideoMode({
-                      static_cast<unsigned>(settings.window.width),
-                      static_cast<unsigned>(settings.window.height)
-                  }), settings.window.title);
+    window.create(
+        sf::VideoMode({
+            static_cast<unsigned>(windowWidth),
+            static_cast<unsigned>(windowHeight)
+        }),
+        "Snake SFML",
+        sf::Style::Default | sf::Style::Resize
+    );
     window.setFramerateLimit(60);
-    window.setView(window.getDefaultView());
+
+    view = window.getDefaultView();
+    window.setView(view);
 }
 
 SFML_LibGUI::~SFML_LibGUI()
@@ -21,8 +28,8 @@ void SFML_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segmen
 
     sf::RectangleShape segmentShape(
         sf::Vector2f(
-            static_cast<float>(getSettings().window.width) / static_cast<float>(getSettings().fieldWidth) + 1,
-            static_cast<float>(getSettings().window.height) / static_cast<float>(getSettings().fieldHeight) + 1
+            static_cast<float>(windowWidth) / static_cast<float>(getSettings().fieldWidth) + 1,
+            static_cast<float>(windowHeight) / static_cast<float>(getSettings().fieldHeight) + 1
         )
     );
     segmentShape.setFillColor(sf::Color::Green);
@@ -30,16 +37,16 @@ void SFML_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segmen
     for (const auto& [x, y] : snakeSegments)
     {
         segmentShape.setPosition({
-            static_cast<float>(x * getSettings().window.width) / static_cast<float>(getSettings().fieldWidth),
-            static_cast<float>(y * getSettings().window.height) / static_cast<float>(getSettings().fieldHeight)
+            static_cast<float>(x * windowWidth) / static_cast<float>(getSettings().fieldWidth),
+            static_cast<float>(y * windowHeight) / static_cast<float>(getSettings().fieldHeight)
         });
         window.draw(segmentShape);
     }
     (void)food;
     segmentShape.setFillColor(sf::Color::Red);
     segmentShape.setPosition({
-        static_cast<float>(food.x * getSettings().window.width) / static_cast<float>(getSettings().fieldWidth),
-        static_cast<float>(food.y * getSettings().window.height) / static_cast<float>(getSettings().fieldHeight)
+        static_cast<float>(food.x * windowWidth) / static_cast<float>(getSettings().fieldWidth),
+        static_cast<float>(food.y * windowHeight) / static_cast<float>(getSettings().fieldHeight)
     });
     window.draw(segmentShape);
 
@@ -56,36 +63,43 @@ Input SFML_LibGUI::handleInput()
         {
             input.quit = true;
         }
-
-        if (const auto* keyPress = event->getIf<sf::Event::KeyPressed>())
+        else if (const auto* resized = event->getIf<sf::Event::Resized>())
         {
-            if (keyPress->code == sf::Keyboard::Key::Left)
+            windowWidth = static_cast<int>(resized->size.x);
+            windowHeight = static_cast<int>(resized->size.y);
+            window.setView(sf::View(sf::FloatRect(
+                {0.0f, 0.0f},
+                {static_cast<float>(windowWidth), static_cast<float>(windowHeight)}
+            )));
+        }
+        else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
+        {
+            switch (keyPressed->code)
             {
+            case sf::Keyboard::Key::Left:
                 input.left = true;
-            }
-            if (keyPress->code == sf::Keyboard::Key::Right)
-            {
+                break;
+            case sf::Keyboard::Key::Right:
                 input.right = true;
-            }
-            if (keyPress->code == sf::Keyboard::Key::Up)
-            {
+                break;
+            case sf::Keyboard::Key::Up:
                 input.up = true;
-            }
-            if (keyPress->code == sf::Keyboard::Key::Down)
-            {
+                break;
+            case sf::Keyboard::Key::Down:
                 input.down = true;
-            }
-            if (keyPress->code == sf::Keyboard::Key::Num1)
-            {
+                break;
+            case sf::Keyboard::Key::Num1:
                 input.digits[1] = true;
-            }
-            if (keyPress->code == sf::Keyboard::Key::Num2)
-            {
+                break;
+            case sf::Keyboard::Key::Num2:
                 input.digits[2] = true;
-            }
-            if (keyPress->code == sf::Keyboard::Key::Num3)
-            {
+                break;
+            case sf::Keyboard::Key::Num3:
                 input.digits[3] = true;
+                break;
+            case sf::Keyboard::Key::Escape:
+                input.quit = true;
+            default: break;
             }
         }
     }

@@ -22,6 +22,8 @@ public:
 private:
     SDL_Window* window;
     SDL_Renderer* renderer;
+    int windowWidth;
+    int windowHeight;
 };
 
 #endif // SDL_LIBGUI_HPP

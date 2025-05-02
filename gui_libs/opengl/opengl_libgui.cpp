@@ -70,7 +70,8 @@ constexpr float cubeVertexPositions[]{
     -1.0f, -1.0f, 1.0f   // front-left
 };
 
-OpenGL_LibGUI::OpenGL_LibGUI(const LibGUISettings& settings) : ALibGUI{settings}
+OpenGL_LibGUI::OpenGL_LibGUI(const LibGUISettings& settings)
+    : ALibGUI{settings}, windowWidth(settings.window.initWidth), windowHeight(settings.window.initHeight)
 {
     if (!glfwInit())
     {
@@ -80,11 +81,10 @@ OpenGL_LibGUI::OpenGL_LibGUI(const LibGUISettings& settings) : ALibGUI{settings}
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    window = glfwCreateWindow(settings.window.width, settings.window.height, settings.window.title.c_str(),
-                              nullptr, nullptr);
+    window = glfwCreateWindow(windowWidth, windowHeight, "Snake OpenGL", nullptr, nullptr);
     if (!window)
     {
         glfwTerminate();
@@ -102,6 +102,9 @@ OpenGL_LibGUI::OpenGL_LibGUI(const LibGUISettings& settings) : ALibGUI{settings}
         throw LibGuiException("Failed to initialize GLEW");
     }
 
+    glViewport(0, 0, windowWidth, windowHeight);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     glfwSetKeyCallback(window, keyCallback);
     prepareState();
 }
@@ -242,8 +245,8 @@ void OpenGL_LibGUI::prepareState()
     segmentNumberLocation = glGetUniformLocation(program, "segmentNumber");
 
     auto projectionMatrix = glm::perspective(glm::radians(FOV),
-                                             static_cast<float>(getSettings().window.width) /
-                                             static_cast<float>(getSettings().window.height),
+                                             static_cast<float>(windowWidth) /
+                                             static_cast<float>(windowHeight),
                                              Z_NEAR, Z_FAR);
 
     glUseProgram(program);
@@ -284,7 +287,7 @@ void OpenGL_LibGUI::renderSegment(const Segment& segment, const int n) const
 {
     constexpr float fov = glm::radians(FOV);
     const float aspect =
-        static_cast<float>(getSettings().window.width) / static_cast<float>(getSettings().window.height);
+        static_cast<float>(windowWidth) / static_cast<float>(windowHeight);
     const float visibleHeight = 2.0f * tan(fov / 2.0f) * Z_DISTANCE;
     const float visibleWidth = visibleHeight * aspect;
     const float cellWidth = visibleWidth / static_cast<float>(getSettings().fieldWidth);
@@ -345,10 +348,30 @@ void OpenGL_LibGUI::keyCallback(GLFWwindow* window, const int key, const int sca
         case GLFW_KEY_3:
             input.digits[3] = true;
             break;
+        case GLFW_KEY_ESCAPE:
+            input.quit = true;
+            break;
         default:
             break;
         }
     }
+}
+
+void OpenGL_LibGUI::framebufferSizeCallback(GLFWwindow* window, int width, int height)
+{
+    OpenGL_LibGUI* instance = static_cast<OpenGL_LibGUI*>(glfwGetWindowUserPointer(window));
+    instance->windowWidth = width;
+    instance->windowHeight = height;
+    glViewport(0, 0, width, height);
+    
+    auto projectionMatrix = glm::perspective(glm::radians(FOV),
+                                             static_cast<float>(width) /
+                                             static_cast<float>(height),
+                                             Z_NEAR, Z_FAR);
+
+    glUseProgram(instance->program);
+    glUniformMatrix4fv(instance->projectionMatrixLocation, 1, GL_FALSE, value_ptr(projectionMatrix));
+    glUseProgram(0);
 }
 
 extern "C" {

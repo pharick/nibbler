@@ -10,9 +10,8 @@
 /* SETTINGS */
 
 typedef struct LibGUIWindowSettings {
-    int width;
-    int height;
-    std::string title;
+    int initWidth;
+    int initHeight;
 } LibGUIWindowSettings;
 
 typedef struct LibGUISettings {

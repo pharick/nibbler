@@ -1,6 +1,7 @@
 #include "sdl_libgui.hpp"
 
-SDL_LibGUI::SDL_LibGUI(const LibGUISettings& settings) : ALibGUI(settings)
+SDL_LibGUI::SDL_LibGUI(const LibGUISettings& settings)
+    : ALibGUI(settings), windowWidth(settings.window.initWidth), windowHeight(settings.window.initHeight)
 {
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
@@ -8,12 +9,12 @@ SDL_LibGUI::SDL_LibGUI(const LibGUISettings& settings) : ALibGUI(settings)
     }
 
     window = SDL_CreateWindow(
-        settings.window.title.c_str(),
+        "Snake SDL",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        settings.window.width,
-        settings.window.height,
-        SDL_WINDOW_SHOWN
+        windowWidth,
+        windowHeight,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
     );
 
     if (!window)
@@ -75,10 +76,10 @@ void SDL_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segment
     for (const auto& [x, y] : snakeSegments)
     {
         SDL_Rect rect = {
-            x * getSettings().window.width / getSettings().fieldWidth,
-            y * getSettings().window.height / getSettings().fieldHeight,
-            getSettings().window.width / getSettings().fieldWidth + 1,
-            getSettings().window.height / getSettings().fieldHeight + 1
+            x * windowWidth / getSettings().fieldWidth,
+            y * windowHeight / getSettings().fieldHeight,
+            windowWidth / getSettings().fieldWidth + 1,
+            windowHeight / getSettings().fieldHeight + 1
         };
         SDL_RenderFillRect(renderer, &rect);
     }
@@ -86,10 +87,10 @@ void SDL_LibGUI::render(const std::vector<Segment>& snakeSegments, const Segment
     /* Render food */
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     const SDL_Rect rect = {
-        food.x * getSettings().window.width / getSettings().fieldWidth,
-        food.y * getSettings().window.height / getSettings().fieldHeight,
-        getSettings().window.width / getSettings().fieldWidth,
-        getSettings().window.height / getSettings().fieldHeight
+        food.x * windowWidth / getSettings().fieldWidth,
+        food.y * windowHeight / getSettings().fieldHeight,
+        windowWidth / getSettings().fieldWidth,
+        windowHeight / getSettings().fieldHeight
     };
     SDL_RenderFillRect(renderer, &rect);
 
@@ -106,6 +107,11 @@ Input SDL_LibGUI::handleInput()
         if (event.type == SDL_QUIT)
         {
             input.quit = true;
+        }
+        else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED)
+        {
+            windowWidth = event.window.data1;
+            windowHeight = event.window.data2;
         }
         else if (event.type == SDL_KEYDOWN)
         {
@@ -131,6 +137,9 @@ Input SDL_LibGUI::handleInput()
                 break;
             case SDLK_3:
                 input.digits[3] = true;
+                break;
+            case SDLK_ESCAPE:
+                input.quit = true;
                 break;
             default: break;
             }

@@ -21,6 +21,9 @@ public:
 
 private:
     sf::RenderWindow window;
+    sf::View view;
+    int windowWidth;
+    int windowHeight;
 };
 
 #endif // SFML_LIBGUI_HPP
